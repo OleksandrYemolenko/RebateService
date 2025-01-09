@@ -23,12 +23,9 @@ class Transaction(models.Model):
     eligibility_status = models.CharField(
         max_length=20,
         choices=[
-            ("pending", "Pending"),
-            ("open", "Open"),
-            ("claimed", "Claimed"),
+            ("eligible", "Eligible"),
             ("not_eligible", "Not Eligible")
-        ],
-        default="pending"
+        ]
     )
 
     def __str__(self):
@@ -55,9 +52,3 @@ class RebateClaim(models.Model):
 
     def __str__(self):
         return str(self.claim_id)
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        # Mark transactions as claimed after saving
-        self.transaction.eligibility_status = "claimed"
-        self.transaction.save()

@@ -5,12 +5,12 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import Transaction, RebateClaim, RebateProgram
+from .models import Transaction, RebateClaim
 from .serializers import (
     RebateProgramSerializer,
     TransactionSerializer,
-    RebateClaimSerializer,
 )
+from .specifications import MinAmountSpecification, TransactionDateRangeSpecification, AndSpecification
 
 
 @api_view(['GET'])
@@ -35,16 +35,26 @@ def create_transaction(request):
 
     if serializer.is_valid():
         rebate_program = serializer.validated_data.get('rebate_program')
-        transaction_date = serializer.validated_data.get('transaction_date')
         transaction = serializer.save()
 
+        specs = []
+        if 'minimal_count' in rebate_program.eligibility_criteria:
+            specs.append(MinAmountSpecification(rebate_program.eligibility_criteria['minimal_count']))
+
+        print(rebate_program.eligibility_criteria['minimal_count'])
+
+        specs.append(TransactionDateRangeSpecification(
+            rebate_program.start_date,
+            rebate_program.end_date
+        ))
+
+        combined_spec = AndSpecification(*specs)
+
         # Check if transaction date is within rebate program's date range
-        if rebate_program and not (
-                rebate_program.start_date <= transaction_date <= rebate_program.end_date
-        ):
+        if not combined_spec.is_satisfied_by(transaction):
             transaction.eligibility_status = "not_eligible"
         else:
-            transaction.eligibility_status = "open"
+            transaction.eligibility_status = "eligible"
 
         transaction.save()
 
@@ -82,7 +92,7 @@ def calculate_rebate(request, transaction_id):
 @api_view(['POST'])
 def claim_rebate(request):
     """Claim rebate for a transaction"""
-    transaction_list = Transaction.objects.filter(eligibility_status="open")
+    transaction_list = Transaction.objects.filter(eligibility_status="eligible").exclude(rebate_claims__isnull=False)
 
     for transaction in transaction_list:
         rebate_claim = RebateClaim()
