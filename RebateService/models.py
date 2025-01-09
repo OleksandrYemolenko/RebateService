@@ -74,7 +74,7 @@ class RebateClaim(models.Model):
         ],
         default="pending"
     )
-    claim_date = models.DateTimeField()
+    claim_date = models.DateField()
 
     def __str__(self):
         return str(self.claim_id)
