@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 from django.db.models import Sum
+from django.views.decorators.cache import cache_page
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -54,6 +55,7 @@ def create_transaction(request):
 
 
 @api_view(['GET'])
+@cache_page(60 * 15)
 def calculate_rebate(request, transaction_id):
     """Calculate rebate for a given transaction"""
     try:
@@ -104,6 +106,7 @@ def claim_rebate(request):
 
 
 @api_view(['GET'])
+@cache_page(60 * 5)
 def get_report(request):
     """Get a summary of total rebate claims and the amount approved for a given period"""
     period_start = request.query_params.get('period_start')

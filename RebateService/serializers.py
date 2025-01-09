@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from rest_framework import serializers
 
 from .models import RebateProgram, Transaction
@@ -32,13 +33,6 @@ class RebateProgramSerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
-    rebate_program = serializers.PrimaryKeyRelatedField(
-        queryset=RebateProgram.objects.all(),
-        error_messages={
-            'does_not_exist': 'Rebate Program with the provided ID does not exist.'
-        }
-    )
-
     class Meta:
         model = Transaction
         fields = [
@@ -49,10 +43,34 @@ class TransactionSerializer(serializers.ModelSerializer):
             'eligibility_status',
         ]
         read_only_fields = [
-            'eligibility_status'
+            'eligibility_status',
+            'rebate_program',
         ]
 
-    def validate_amount(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Transaction amount must be greater than zero.")
-        return value
+    def to_internal_value(self, data):
+        """Override to check cache for RebateProgram before fetching from DB"""
+        global rebate_program
+        rebate_program_id = data.pop('rebate_program')
+
+        if rebate_program_id:
+            cached_rebate_program = cache.get(f'rebate_program_{rebate_program_id}')
+
+            if cached_rebate_program:
+                rebate_program = cached_rebate_program
+            else:
+                try:
+                    rebate_program = RebateProgram.objects.get(rebate_program_id=rebate_program_id)
+
+                    cache.set(f'rebate_program_{rebate_program_id}', rebate_program,
+                              timeout=60 * 60)
+                except RebateProgram.DoesNotExist:
+                    raise serializers.ValidationError({
+                        'rebate_program': f'Rebate Program with ID "{rebate_program_id}" does not exist.'
+                    })
+
+        # Call super with remaining data
+        validated_data = super().to_internal_value(data)
+        # Add the rebate_program object to validated_data
+        validated_data['rebate_program'] = rebate_program
+
+        return validated_data
