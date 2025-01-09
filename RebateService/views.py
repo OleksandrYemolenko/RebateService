@@ -41,8 +41,6 @@ def create_transaction(request):
         if 'minimal_count' in rebate_program.eligibility_criteria:
             specs.append(MinAmountSpecification(rebate_program.eligibility_criteria['minimal_count']))
 
-        print(rebate_program.eligibility_criteria['minimal_count'])
-
         specs.append(TransactionDateRangeSpecification(
             rebate_program.start_date,
             rebate_program.end_date
