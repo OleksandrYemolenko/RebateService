@@ -1,0 +1,4 @@
+Django~=5.1.4
+djangorestframework~=3.15.2
+serializers~=0.2.4
+psycopg2~=2.8
