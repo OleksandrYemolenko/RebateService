@@ -25,4 +25,6 @@ urlpatterns = [
     path('api/v1/transactions', views.create_transaction),
     path('api/v1/transactions/<uuid:transaction_id>/rebate', views.calculate_rebate),
     path('api/v1/report', views.get_report),
+    path('api/v1/claim/<uuid:claim_id>/approve', views.approve_claim),
+    path('api/v1/claim/<uuid:claim_id>/reject', views.reject_claim),
 ]

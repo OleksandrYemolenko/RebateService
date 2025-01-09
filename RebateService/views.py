@@ -89,6 +89,7 @@ def claim_rebate(request):
                     .exclude(rebate_claims__claim_status__in=["pending", "approved"]))
 
     created_claims = 0
+    created_claims_id = []
     for transaction in transactions:
         rebate_claim = RebateClaim(
             transaction=transaction,
@@ -97,16 +98,17 @@ def claim_rebate(request):
         )
         rebate_claim.save()
         created_claims += 1
+        created_claims_id.append(rebate_claim.claim_id)
         logger.info("Successfully created a pending claim for transaction: {}".format(transaction.transaction_id))
 
     return Response(
-        {"message": f"{created_claims} rebate claims successfully created."},
+        {"message": f"{created_claims} rebate claims successfully created."
+              f"{created_claims_id}"},
         status=status.HTTP_200_OK,
     )
 
 
 @api_view(['GET'])
-@cache_page(60 * 5)
 def get_report(request):
     """Get a summary of total rebate claims and the amount approved for a given period"""
     period_start = request.query_params.get('period_start')
@@ -140,3 +142,41 @@ def get_report(request):
         },
         status=status.HTTP_200_OK,
     )
+
+@api_view(['PUT'])
+def reject_claim(request, claim_id):
+    """Reject a claim"""
+    try :
+      claim = RebateClaim.objects.get(pk=claim_id)
+    except RebateClaim.DoesNotExist:
+        return Response(
+            {'error': 'Claim not found.'}, status=status.HTTP_404_NOT_FOUND
+        )
+
+    if claim.claim_status == "approved":
+        return Response(
+            {'error': 'Claim already approved.'}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    claim.reject()
+
+    return Response(status=status.HTTP_200_OK)
+
+@api_view(['PUT'])
+def approve_claim(request, claim_id):
+    """Reject a claim"""
+    try :
+      claim = RebateClaim.objects.get(pk=claim_id)
+    except RebateClaim.DoesNotExist:
+        return Response(
+            {'error': 'Claim not found.'}, status=status.HTTP_404_NOT_FOUND
+        )
+
+    if claim.claim_status == "approved":
+        return Response(
+            {'error': 'Claim already rejected.'}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    claim.approve()
+
+    return Response(status=status.HTTP_200_OK)

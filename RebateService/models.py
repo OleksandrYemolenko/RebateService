@@ -97,3 +97,11 @@ class RebateClaim(models.Model):
             raise ValueError("A transaction can only have one pending claim.")
 
         super().save(*args, **kwargs)
+
+    def reject(self):
+        self.claim_status = "rejected"
+        self.save()
+
+    def approve(self):
+        self.claim_status = "approved"
+        self.save()
