@@ -21,10 +21,10 @@ from . import views
 urlpatterns = [
     path('health', views.health),
     path('api/v1/rebate-programs', views.create_rebate_program),
-    path('api/v1/rebate-programs/claim', views.claim_rebate),
     path('api/v1/transactions', views.create_transaction),
     path('api/v1/transactions/<uuid:transaction_id>/rebate', views.calculate_rebate),
     path('api/v1/report', views.get_report),
+    path('api/v1/claim', views.claim_open_transactions),
     path('api/v1/claim/<uuid:claim_id>/approve', views.approve_claim),
     path('api/v1/claim/<uuid:claim_id>/reject', views.reject_claim),
 ]

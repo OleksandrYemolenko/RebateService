@@ -82,7 +82,7 @@ def calculate_rebate(request, transaction_id):
 
 
 @api_view(['POST'])
-def claim_rebate(request):
+def claim_open_transactions(request):
     """Claim rebate for eligible transactions"""
     transactions = (Transaction.objects
                     .filter(eligibility_status="eligible")

@@ -1,0 +1,280 @@
+{
+	"info": {
+		"_postman_id": "87250e62-7223-4491-b203-b650e4bf2f69",
+		"name": "RebateService",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "9357939"
+	},
+	"item": [
+		{
+			"name": "Health",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/health",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Reject claim",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/v1/claim/3892f038-7d26-41f8-b54e-21a6d0292eda/reject",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"claim",
+						"3892f038-7d26-41f8-b54e-21a6d0292eda",
+						"reject"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Approve claim",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/v1/claim/ef1c6ba0-58cc-4b38-bf57-eb812ee6975f/approve",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"claim",
+						"ef1c6ba0-58cc-4b38-bf57-eb812ee6975f",
+						"approve"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create rebate",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var response = pm.response.json();",
+							"pm.collectionVariables.set(\"rebate_program_id\", response.rebate_program_id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"program_name\": \"test name\",\n    \"rebate_percentage\": \"10\",\n    \"start_date\": \"2025-01-01\",\n    \"end_date\": \"2025-01-20\",\n    \"eligibility_criteria\": {\n        \"minimal_count\": 10\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/v1/rebate-programs",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"rebate-programs"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Claim rebate",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"program_name\": \"test name 2\",\n    \"rebate_percentage\": \"10\",\n    \"start_date\": \"2025-01-01\",\n    \"end_date\": \"2025-01-20\",\n    \"eligibility_criteria\": {\n        \"minimal_count\": \"10\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/v1/rebate-programs/claim",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"rebate-programs",
+						"claim"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create transaction",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var response = pm.response.json();",
+							"pm.collectionVariables.set(\"transaction_id\", response.transaction_id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"amount\" : 200,\n    \"transaction_date\": \"2025-01-15\",\n    \"rebate_program\": \"{{rebate_program_id}}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/v1/transactions",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"transactions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get transaction rebate",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/v1/transactions/{{transaction_id}}/rebate",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"transactions",
+						"{{transaction_id}}",
+						"rebate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get report",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/v1/report?period_start=2025-01-01&period_end=2025-01-30",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"v1",
+						"report"
+					],
+					"query": [
+						{
+							"key": "period_start",
+							"value": "2025-01-01"
+						},
+						{
+							"key": "period_end",
+							"value": "2025-01-30"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "transaction_id",
+			"value": ""
+		},
+		{
+			"key": "rebate_program_id",
+			"value": ""
+		}
+	]
+}
