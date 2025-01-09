@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import RebateProgram, Transaction, RebateClaim
+from .models import RebateProgram, Transaction
 
 
 class RebateProgramSerializer(serializers.ModelSerializer):
@@ -15,8 +15,30 @@ class RebateProgramSerializer(serializers.ModelSerializer):
             'eligibility_criteria',
         ]
 
+    def validate_rebate_percentage(self, value):
+        if value <= 0 or value > 100:
+            raise serializers.ValidationError(
+                'A rebate should have valid percentage.'
+            )
+        return value
+
+    def validate(self, data):
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+
+        if start_date > end_date:
+            raise serializers.ValidationError("Start date must be before end date.")
+        return data
+
 
 class TransactionSerializer(serializers.ModelSerializer):
+    rebate_program = serializers.PrimaryKeyRelatedField(
+        queryset=RebateProgram.objects.all(),
+        error_messages={
+            'does_not_exist': 'Rebate Program with the provided ID does not exist.'
+        }
+    )
+
     class Meta:
         model = Transaction
         fields = [
@@ -30,27 +52,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             'eligibility_status'
         ]
 
-
-class RebateClaimSerializer(serializers.ModelSerializer):
-    transaction = serializers.PrimaryKeyRelatedField(queryset=Transaction.objects.all())
-
-    class Meta:
-        model = RebateClaim
-        fields = [
-            'claim_id',
-            'transaction',
-            'claim_amount',
-            'claim_status',
-            'claim_date',
-        ]
-
-    def validate(self, data):
-        """
-        Ensure that a rebate can only be claimed once for each transaction.
-        """
-        transaction = data.get('transaction')
-        if RebateClaim.objects.filter(transaction=transaction).exists():
-            raise serializers.ValidationError(
-                'A rebate has already been claimed for this transaction.'
-            )
-        return data
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Transaction amount must be greater than zero.")
+        return value

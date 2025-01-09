@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from django.db.models import Sum
@@ -10,12 +11,18 @@ from .serializers import (
     RebateProgramSerializer,
     TransactionSerializer,
 )
-from .specifications import MinAmountSpecification, TransactionDateRangeSpecification, AndSpecification
+
+logger = logging.getLogger()
 
 
 @api_view(['GET'])
 def health(request):
-    return Response("Healthy", status=status.HTTP_200_OK)
+    """Health check with DB status"""
+    try:
+        Transaction.objects.exists()
+        return Response({"status": "Healthy"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"status": "Unhealthy", "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
@@ -24,6 +31,9 @@ def create_rebate_program(request):
     serializer = RebateProgramSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
+
+        logger.info("Successfully created a new rebate program: {}".format(serializer.data["rebate_program_id"]))
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -34,27 +44,10 @@ def create_transaction(request):
     serializer = TransactionSerializer(data=request.data)
 
     if serializer.is_valid():
-        rebate_program = serializer.validated_data.get('rebate_program')
         transaction = serializer.save()
+        transaction.check_eligibility()
 
-        specs = []
-        if 'minimal_count' in rebate_program.eligibility_criteria:
-            specs.append(MinAmountSpecification(rebate_program.eligibility_criteria['minimal_count']))
-
-        specs.append(TransactionDateRangeSpecification(
-            rebate_program.start_date,
-            rebate_program.end_date
-        ))
-
-        combined_spec = AndSpecification(*specs)
-
-        # Check if transaction date is within rebate program's date range
-        if not combined_spec.is_satisfied_by(transaction):
-            transaction.eligibility_status = "not_eligible"
-        else:
-            transaction.eligibility_status = "eligible"
-
-        transaction.save()
+        logger.info("Successfully created a new transaction: {}".format(serializer.data["transaction_id"]))
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -75,31 +68,39 @@ def calculate_rebate(request, transaction_id):
             {'Transaction is not eligible for rebate.'}, status=status.HTTP_200_OK
         )
 
-    rebate_program = transaction.rebate_program
-    if rebate_program:
-        rebate_amount = (transaction.amount * rebate_program.rebate_percentage) / 100
+    if transaction.rebate_program:
+        rebate_amount = transaction.get_rebate_amount()
         return Response(
             {'rebate_amount': rebate_amount},
             status=status.HTTP_200_OK,
         )
     return Response(
-        {'Transaction is not eligible for rebate.'}, status=status.HTTP_200_OK
+        {'No rebate program is associated with transaction.'}, status=status.HTTP_404_NOT_FOUND
     )
 
 
 @api_view(['POST'])
 def claim_rebate(request):
-    """Claim rebate for a transaction"""
-    transaction_list = Transaction.objects.filter(eligibility_status="eligible").exclude(rebate_claims__isnull=False)
+    """Claim rebate for eligible transactions"""
+    transactions = (Transaction.objects
+                    .filter(eligibility_status="eligible")
+                    .exclude(rebate_claims__claim_status__in=["pending", "approved"]))
 
-    for transaction in transaction_list:
-        rebate_claim = RebateClaim()
-        rebate_claim.transaction = transaction
-        rebate_claim.claim_amount = (transaction.amount * transaction.get_rebate_percentage()) / 100
-        rebate_claim.claim_date = datetime.now()
+    created_claims = 0
+    for transaction in transactions:
+        rebate_claim = RebateClaim(
+            transaction=transaction,
+            claim_amount=transaction.get_rebate_amount(),
+            claim_date=datetime.now().date(),
+        )
         rebate_claim.save()
+        created_claims += 1
+        logger.info("Successfully created a pending claim for transaction: {}".format(transaction.transaction_id))
 
-    return Response(status=status.HTTP_200_OK)
+    return Response(
+        {"message": f"{created_claims} rebate claims successfully created."},
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(['GET'])
@@ -116,6 +117,10 @@ def get_report(request):
             {'error': 'Invalid date format. Use YYYY-MM-DD.'},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+    if period_start > period_end:
+        return Response({'error': 'Invalid period. Start date should be before end date.'},
+                        status=status.HTTP_400_BAD_REQUEST)
 
     claims = RebateClaim.objects.filter(
         claim_date__range=(period_start, period_end)
